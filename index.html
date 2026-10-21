@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Meal Feedback</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --radius-lg: 24px;
+      --radius-md: 16px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .container {
+      width: 90vw;
+      max-width: 750px;
+      text-align: center;
+    }
+
+    .meal-badge {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 600;
+      margin-bottom: 40px;
+    }
+
+    .view {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .view.active {
+      display: flex;
+    }
+
+    .rating-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .rate-btn {
+      background-color: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 40px 20px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .rate-btn span {
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .rate-btn .icon {
+      font-size: 3rem;
+    }
+
+    #btn-great:hover {
+      border-color: var(--emerald);
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    #btn-good:hover {
+      border-color: var(--amber);
+      background: rgba(245, 158, 11, 0.08);
+    }
+
+    #btn-bad:hover {
+      border-color: var(--rose);
+      background: rgba(244, 63, 94, 0.08);
+    }
+
+    .tags-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    .tag-btn {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      font-size: 1.1rem;
+      color: var(--text-main);
+      cursor: pointer;
+    }
+
+    .back-row {
+      margin-top: 15px;
+    }
+
+    .text-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    #thank-you {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    #thank-you.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #thank-you h2 {
+      font-size: 2.5rem;
+      color: var(--emerald);
+      margin: 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <div class="meal-badge" id="meal-indicator">Loading Meal...</div>
+
+    <!-- STEP 1: Main Rating View -->
+    <div id="view-rating" class="view active">
+      <h1>How was staff meal today?</h1>
+      <div class="rating-grid">
+        <button class="rate-btn" id="btn-great" onclick="selectRating('Great')">
+          <span class="icon">✨</span><span>Great</span>
+        </button>
+        <button class="rate-btn" id="btn-good" onclick="selectRating('Good')">
+          <span class="icon">👍</span><span>Good</span>
+        </button>
+        <button class="rate-btn" id="btn-bad" onclick="selectRating('Needs Work')">
+          <span class="icon">⚠️</span><span>Needs Work</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Context / Why View -->
+    <div id="view-context" class="view">
+      <h1>What stood out?</h1>
+      <div class="tags-grid" id="context-options"></div>
+      <div class="back-row"><button class="text-btn" onclick="resetView()">← Back</button></div>
+    </div>
+  </div>
+
+  <div id="thank-you">
+    <h2>Feedback Recorded</h2>
+  </div>
+
+  <script>
+    // PASTE YOUR NEW GOOGLE APPS SCRIPT WEB APP URL HERE:
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzyE3CVTvc7qzXeHp3infeEjntniGkB0IPVRHHLcYsyxpOjX6faRqWma-j47CNoq95I5A/exec';
+
+    let currentRating = '';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const now = new Date();
+      const totalMinutes = (now.getHours() * 60) + now.getMinutes();
+      const meal = totalMinutes < 690 ? 'Breakfast Service' : 'Staff Meal Service';
+      document.getElementById('meal-indicator').innerText = meal;
+    });
+
+    function selectRating(rating) {
+      currentRating = rating;
+      const container = document.getElementById('context-options');
+      container.innerHTML = '';
+
+      let options = rating === 'Great' ? ['Full of flavor', 'Great portion size', 'Loved the dish choice', 'Comfort food'] :
+        rating === 'Good' ? ['Solid overall', 'Needed seasoning', 'A bit heavy', 'Good execution'] :
+          ['Under-seasoned / Bland', 'Over-cooked', 'Cold by service', 'Not filling enough'];
+
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'tag-btn';
+        btn.innerText = opt;
+        btn.onclick = () => submitFinalFeedback(opt);
+        container.appendChild(btn);
+      });
+
+      document.getElementById('view-rating').classList.remove('active');
+      document.getElementById('view-context').classList.add('active');
+    }
+
+    function resetView() {
+      document.getElementById('view-context').classList.remove('active');
+      document.getElementById('view-rating').classList.add('active');
+    }
+
+    function submitFinalFeedback(contextTag) {
+      const mealTime = document.getElementById('meal-indicator').innerText;
+
+      const params = new URLSearchParams({
+        rating: currentRating,
+        context: contextTag,
+        mealTime: mealTime
+      });
+
+      // Uses an image pixel request to bypass local file restrictions cleanly
+      const img = new Image();
+      img.src = `${SCRIPT_URL}?${params.toString()}`;
+
+      const thankYou = document.getElementById('thank-you');
+      thankYou.classList.add('show');
+
+      setTimeout(() => {
+        thankYou.classList.remove('show');
+        resetView();
+      }, 1200);
+    }
+  </script>
+</body>
+
+</html>
